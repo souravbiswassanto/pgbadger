@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pgbadger-server
+  namespace: demo
+  labels:
+    app: pgbadger-server
+spec:
+  containers:
+  - name: pgbadger-server
+    image: souravbiswassanto/pgbadger-server:latest
+    ports:
+    - containerPort: 2385
+      name: http
+      protocol: TCP
+    volumeMounts:
+    - mountPath: /var/pv
+      name: data
+    resources:
+      limits:
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      runAsNonRoot: true
+      runAsUser: 70
+      seccompProfile:
+        type: RuntimeDefault
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: data-ha-postgres-1
+  restartPolicy: Always
