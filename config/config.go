@@ -16,6 +16,13 @@ type Config struct {
 		Level string `mapstructure:"level"`
 	} `mapstructure:"log"`
 
+	Auth struct {
+		JWTSecret    string        `mapstructure:"jwt_secret"`
+		JWTExpiry    time.Duration `mapstructure:"jwt_expiry"`
+		Username     string        `mapstructure:"username"`
+		PasswordHash string        `mapstructure:"password_hash"`
+	} `mapstructure:"auth"`
+
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }
@@ -46,6 +53,10 @@ func Load() *Config {
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 2385)
 	viper.SetDefault("log.level", "info")
+	viper.SetDefault("auth.jwt_secret", "change-this-secret-in-production")
+	viper.SetDefault("auth.jwt_expiry", "24h")
+	viper.SetDefault("auth.username", "admin")
+	viper.SetDefault("auth.password_hash", "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi") // "password"
 	viper.SetDefault("read_timeout", "5s")
 	viper.SetDefault("write_timeout", "10s")
 

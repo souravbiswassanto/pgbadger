@@ -26,7 +26,7 @@ func New(cfg *config.Config, lg *zap.SugaredLogger) *Server {
 	r.Use(middleware.ZapLogger(lg))
 
 	// register routes
-	handler.Register(r, lg)
+	handler.Register(r, cfg, lg)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 
