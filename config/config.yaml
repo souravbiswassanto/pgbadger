@@ -11,5 +11,12 @@ auth:
   username: "postgres"
   password_hash: ""
 
+security:
+  enable_tls: false
+  cert_file: ""
+  key_file: ""
+  ca_file: ""
+  insecure: false
+
 read_timeout: "5s"
 write_timeout: "10s"

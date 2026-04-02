@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 2rem; }
+      input { display: block; margin: .5rem 0; padding: .5rem; width: 300px }
+      button { padding: .5rem 1rem }
+    </style>
+  </head>
+  <body>
+    <h1>Login</h1>
+    <form id="loginForm">
+      <label>Username</label>
+      <input id="username" name="username" required />
+      <label>Password</label>
+      <input id="password" name="password" type="password" required />
+      <button type="submit">Login</button>
+    </form>
+
+    <script>
+      // Read csrf_token cookie helper
+      function readCookie(name) {
+        const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')
+        return v ? v.pop() : ''
+      }
+
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const username = document.getElementById('username').value
+        const password = document.getElementById('password').value
+
+        // Double-submit CSRF: send X-CSRF-Token header with value from csrf_token cookie
+        const csrf = readCookie('csrf_token')
+
+        const resp = await fetch('/api/v1/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrf
+          },
+          body: JSON.stringify({ username, password }),
+          credentials: 'same-origin'
+        })
+
+        if (resp.ok) {
+          alert('login successful')
+          window.location.href = '/'
+        } else {
+          const body = await resp.json().catch(()=>({}))
+          alert('login failed: ' + (body.error || resp.status))
+        }
+      })
+    </script>
+  </body>
+</html>

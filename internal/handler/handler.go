@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,20 +30,198 @@ func Register(r *gin.Engine, cfg *config.Config, lg *zap.SugaredLogger) {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// Serve a basic login page which sets an initial csrf cookie
+	r.GET("/login", func(c *gin.Context) {
+		// generate csrf token and set as cookie (not HttpOnly so client JS can read it)
+		// TODO: use a more secure random token generator
+		csrfVal := fmt.Sprintf("%d", time.Now().UnixNano())
+		secure := cfg.Security.EnableTLS
+		csrf := &http.Cookie{
+			Name:     "csrf_token",
+			Value:    csrfVal,
+			Path:     "/",
+			HttpOnly: false,
+			Secure:   secure,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   int(time.Hour.Seconds()),
+			Expires:  time.Now().Add(time.Hour),
+		}
+		http.SetCookie(c.Writer, csrf)
+
+		// serve the static login page
+		c.File("./web/login.html")
+	})
 }
 
 func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var opts PgbadgerOptions
 
-		// Bind JSON request body to options struct
-		if err := c.ShouldBindJSON(&opts); err != nil {
-			lg.Errorw("Invalid request body", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request format",
-				"details": err.Error(),
-			})
-			return
+		// Read options from query parameters (double submit CSRF enforced in middleware)
+		// Helpers to read params
+		qp := func(key string) string { return c.Query(key) }
+		qps := func(key string) []string { return c.QueryArray(key) }
+
+		if v := qp("format"); v != "" {
+			opts.Format = &v
+		}
+		if v := qp("outfile"); v != "" {
+			opts.Outfile = &v
+		}
+		if v := qp("outdir"); v != "" {
+			opts.Outdir = &v
+		}
+		if v := qp("title"); v != "" {
+			opts.Title = &v
+		}
+		if v := qp("jobs"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.Jobs = &n
+			}
+		}
+		if v := qp("jobs_parallel"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.JobsParallel = &n
+			}
+		}
+		if v := qp("verbose"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Verbose = &b
+			}
+		}
+		if v := qp("quiet"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Quiet = &b
+			}
+		}
+
+		if v := qp("dbname"); v != "" {
+			opts.Dbname = &v
+		}
+		if v := qp("dbuser"); v != "" {
+			opts.Dbuser = &v
+		}
+		if v := qp("appname"); v != "" {
+			opts.Appname = &v
+		}
+		if v := qp("client_host"); v != "" {
+			opts.ClientHost = &v
+		}
+
+		if v := qp("begin"); v != "" {
+			opts.Begin = &v
+		}
+		if v := qp("end"); v != "" {
+			opts.End = &v
+		}
+
+		if v := qp("top"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.Top = &n
+			}
+		}
+		if v := qp("sample"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.Sample = &n
+			}
+		}
+		if v := qp("maxlength"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.Maxlength = &n
+			}
+		}
+
+		if v := qp("average"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.Average = &n
+			}
+		}
+		if v := qp("histo_average"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				opts.HistoAverage = &n
+			}
+		}
+		if v := qp("nograph"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Nograph = &b
+			}
+		}
+
+		if v := qp("extension"); v != "" {
+			opts.Extension = &v
+		}
+		if v := qp("prettify"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Prettify = &b
+			}
+		}
+		if v := qp("query_numbering"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.QueryNumbering = &b
+			}
+		}
+
+		if v := qp("select_only"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.SelectOnly = &b
+			}
+		}
+		if v := qp("watch_mode"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.WatchMode = &b
+			}
+		}
+		if v := qp("incremental"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Incremental = &b
+			}
+		}
+		if v := qp("explode"); v != "" {
+			if b, err := strconv.ParseBool(v); err == nil {
+				opts.Explode = &b
+			}
+		}
+
+		// list-type params
+		if s := qps("exclude_user"); len(s) > 0 {
+			opts.ExcludeUser = s
+		}
+		if s := qps("exclude_appname"); len(s) > 0 {
+			opts.ExcludeAppname = s
+		}
+		if s := qps("exclude_client"); len(s) > 0 {
+			opts.ExcludeClient = s
+		}
+		if s := qps("exclude_db"); len(s) > 0 {
+			opts.ExcludeDb = s
+		}
+
+		if s := qps("include_query"); len(s) > 0 {
+			opts.IncludeQuery = s
+		}
+		if s := qps("include_pid"); len(s) > 0 {
+			opts.IncludePid = s
+		}
+		if s := qps("include_session"); len(s) > 0 {
+			opts.IncludeSession = s
+		}
+
+		if v := qp("prefix"); v != "" {
+			opts.Prefix = &v
+		}
+		if v := qp("ident"); v != "" {
+			opts.Ident = &v
+		}
+		if v := qp("timezone"); v != "" {
+			opts.Timezone = &v
+		}
+		if v := qp("log_timezone"); v != "" {
+			opts.LogTimezone = &v
+		}
+
+		if v := qp("data_dir"); v != "" {
+			opts.DataDir = &v
 		}
 
 		// Set defaults
@@ -58,24 +237,35 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 			return
 		}
 
-		// Determine log file path
-		logPath := filepath.Join(*opts.DataDir, "*.log")
+		// Determine log file path and expand glob
+		logGlob := filepath.Join(*opts.DataDir, "*.log")
+		files, err := filepath.Glob(logGlob)
+		if err != nil || len(files) == 0 {
+			lg.Errorw("No log files found for pattern", "pattern", logGlob, "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no log files found"})
+			return
+		}
 
-		// Build the pgbadger command
-		args := opts.BuildCommand(logPath)
-		cmd := exec.Command("pgbadger", args...)
+		// Build the pgbadger command; pass all file paths explicitly
+		args := opts.BuildCommand(files[0])
+		if len(files) > 1 {
+			// append remaining files as positional args
+			for _, f := range files[1:] {
+				args = append(args, f)
+			}
+		}
 
 		// Set a timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		cmd = exec.CommandContext(ctx, "pgbadger", args...)
+		cmd := exec.CommandContext(ctx, "pgbadger", args...)
 
 		// Log the command being executed (for debugging)
 		lg.Infow("Executing pgbadger command",
 			"command", fmt.Sprintf("pgbadger %v", args),
 			"user", c.GetString("username"))
 
-		// Execute the command
+		// Execute the command and capture output
 		output, err := cmd.CombinedOutput()
 		if ctx.Err() == context.DeadlineExceeded {
 			lg.Errorw("pgbadger command timed out", "command", fmt.Sprintf("pgbadger %v", args))
@@ -99,28 +289,23 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 			return
 		}
 
-		// Determine output file path
-		outputFile := "/tmp/report.html"
-		if opts.Outfile != nil {
-			outputFile = *opts.Outfile
-		} else if opts.Extension != nil && *opts.Extension == "json" {
-			outputFile = "/tmp/report.json"
-		} else if opts.Extension != nil && *opts.Extension == "text" {
-			outputFile = "/tmp/report.txt"
-		}
-
-		// Read the generated report file
-		htmlContent, err := os.ReadFile(outputFile)
+		// Write output to a temp file and serve it
+		tmpFile, err := os.CreateTemp("/tmp", "pgbadger-*.out")
 		if err != nil {
-			lg.Errorw("Failed to read report file", "error", err, "file", outputFile)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to read generated report",
-				"details": err.Error(),
-			})
+			lg.Errorw("Failed to create temp file", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create temp file"})
 			return
 		}
+		defer os.Remove(tmpFile.Name())
 
-		// Set appropriate content type based on extension
+		if _, err := tmpFile.Write(output); err != nil {
+			lg.Errorw("Failed to write report to temp file", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to write report"})
+			return
+		}
+		_ = tmpFile.Close()
+
+		// Determine content type
 		contentType := "text/html"
 		if opts.Extension != nil {
 			switch *opts.Extension {
@@ -133,12 +318,18 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 			}
 		}
 
-		// Return the report
+		data, err := os.ReadFile(tmpFile.Name())
+		if err != nil {
+			lg.Errorw("Failed to read temp report file", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read report"})
+			return
+		}
+
 		c.Header("Content-Type", contentType)
-		c.String(http.StatusOK, string(htmlContent))
+		c.String(http.StatusOK, string(data))
 
 		lg.Infow("Report generated successfully",
-			"output_file", outputFile,
+			"temp_file", tmpFile.Name(),
 			"content_type", contentType,
 			"user", c.GetString("username"))
 	}

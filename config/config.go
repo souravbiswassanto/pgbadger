@@ -23,6 +23,14 @@ type Config struct {
 		PasswordHash string        `mapstructure:"password_hash"`
 	} `mapstructure:"auth"`
 
+	Security struct {
+		EnableTLS bool   `mapstructure:"enable_tls"`
+		CertFile  string `mapstructure:"cert_file"`
+		KeyFile   string `mapstructure:"key_file"`
+		CAFile    string `mapstructure:"ca_file"`
+		Insecure  bool   `mapstructure:"insecure"` // if true, bypass auth checks (testing only)
+	} `mapstructure:"security"`
+
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }
@@ -55,6 +63,11 @@ func Load() *Config {
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("auth.jwt_secret", "change-this-secret-in-production")
 	viper.SetDefault("auth.jwt_expiry", "24h")
+	viper.SetDefault("security.enable_tls", false)
+	viper.SetDefault("security.cert_file", "")
+	viper.SetDefault("security.key_file", "")
+	viper.SetDefault("security.ca_file", "")
+	viper.SetDefault("security.insecure", false)
 	viper.SetDefault("auth.username", "admin")
 	viper.SetDefault("auth.password_hash", "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi") // "password"
 	viper.SetDefault("read_timeout", "5s")
@@ -76,6 +89,13 @@ func Load() *Config {
 	if wt := viper.GetString("write_timeout"); wt != "" {
 		if d, err := time.ParseDuration(wt); err == nil {
 			cfg.WriteTimeout = d
+		}
+	}
+
+	// parse auth.jwt_expiry which may be provided as string like "24h"
+	if je := viper.GetString("auth.jwt_expiry"); je != "" {
+		if d, err := time.ParseDuration(je); err == nil {
+			cfg.Auth.JWTExpiry = d
 		}
 	}
 
