@@ -10,14 +10,14 @@ import (
 // Only whitelisted options are included for security
 type PgbadgerOptions struct {
 	// Basic options
-	Format       *string `json:"format,omitempty"`        // -f, --format
-	Outfile      *string `json:"outfile,omitempty"`       // -o, --outfile
-	Outdir       *string `json:"outdir,omitempty"`        // -O, --outdir
-	Title        *string `json:"title,omitempty"`         // -T, --title
-	Jobs         *int    `json:"jobs,omitempty"`          // -j, --jobs
-	JobsParallel *int    `json:"jobs_parallel,omitempty"` // -J, --Jobs
-	Verbose      *bool   `json:"verbose,omitempty"`       // -v, --verbose
-	Quiet        *bool   `json:"quiet,omitempty"`         // -q, --quiet
+	Format       *string  `json:"format,omitempty"`        // -f, --format
+	Outfiles     []string `json:"outfiles,omitempty"`      // -o, --outfile (multiple)
+	Outdir       *string  `json:"outdir,omitempty"`        // -O, --outdir
+	Title        *string  `json:"title,omitempty"`         // -T, --title
+	Jobs         *int     `json:"jobs,omitempty"`          // -j, --jobs
+	JobsParallel *int     `json:"jobs_parallel,omitempty"` // -J, --Jobs
+	Verbose      *bool    `json:"verbose,omitempty"`       // -v, --verbose
+	Quiet        *bool    `json:"quiet,omitempty"`         // -q, --quiet
 
 	// Filtering options
 	Dbname     *string `json:"dbname,omitempty"`      // -d, --dbname
@@ -41,7 +41,7 @@ type PgbadgerOptions struct {
 
 	// Output options
 	Extension      *string `json:"extension,omitempty"`       // -x, --extension
-	Prettify       *bool   `json:"prettify,omitempty"`        // -P, --no-prettify (inverted)
+	NoPrettify     *bool   `json:"no_prettify,omitempty"`     // -P, --no-prettify (presence disables prettify)
 	QueryNumbering *bool   `json:"query_numbering,omitempty"` // -Q, --query-numbering
 
 	// Special modes
@@ -55,6 +55,9 @@ type PgbadgerOptions struct {
 	ExcludeAppname []string `json:"exclude_appname,omitempty"` // --exclude-appname
 	ExcludeClient  []string `json:"exclude_client,omitempty"`  // --exclude-client
 	ExcludeDb      []string `json:"exclude_db,omitempty"`      // --exclude-db
+	ExcludeFile    []string `json:"exclude_file,omitempty"`    // --exclude-file
+	ExcludeLine    []string `json:"exclude_line,omitempty"`    // --exclude-line
+	ExcludeQuery   []string `json:"exclude_query,omitempty"`   // --exclude-query
 
 	// Include options
 	IncludeQuery   []string `json:"include_query,omitempty"`   // --include-query
@@ -66,6 +69,70 @@ type PgbadgerOptions struct {
 	Ident       *string `json:"ident,omitempty"`        // -i, --ident
 	Timezone    *string `json:"timezone,omitempty"`     // -Z, --timezone
 	LogTimezone *string `json:"log_timezone,omitempty"` // --log-timezone
+
+	// Additional options implemented
+	LogfileList *string `json:"logfile_list,omitempty"` // -L, --logfile-list
+	LastParsed  *string `json:"last_parsed,omitempty"`  // -l, --last-parsed
+	NoComment   *bool   `json:"no_comment,omitempty"`   // -C, --nocomment
+	DNSResolv   *bool   `json:"dns_resolv,omitempty"`   // -D, --dns-resolv
+	HTMLOutdir  *string `json:"html_outdir,omitempty"`  // -H, --html-outdir
+	NoMultiline *bool   `json:"no_multiline,omitempty"` // -M, --no-multiline
+
+	RemoteHost  *string  `json:"remote_host,omitempty"`  // -r, --remote-host
+	SSHIdentity *string  `json:"ssh_identity,omitempty"` // --ssh-identity
+	SSHOption   []string `json:"ssh_option,omitempty"`   // --ssh-option
+	SSHPort     *int     `json:"ssh_port,omitempty"`     // --ssh-port
+	SSHProgram  *string  `json:"ssh_program,omitempty"`  // --ssh-program
+	SSHTimeout  *int     `json:"ssh_timeout,omitempty"`  // --ssh-timeout
+	SSHUser     *string  `json:"ssh_user,omitempty"`     // --ssh-user
+
+	Retention    *int    `json:"retention,omitempty"`     // -R, --retention
+	ExtraFiles   *bool   `json:"extra_files,omitempty"`   // -X, --extra-files
+	Zcat         *string `json:"zcat,omitempty"`          // -z, --zcat
+	Command      *string `json:"command,omitempty"`       // --command
+	CSVSeparator *string `json:"csv_separator,omitempty"` // --csv-separator
+
+	DayReport   *string `json:"day_report,omitempty"`   // --day-report
+	MonthReport *string `json:"month_report,omitempty"` // --month-report
+
+	// Disable specific report sections
+	DisableAutovacuum *bool `json:"disable_autovacuum,omitempty"`
+	DisableCheckpoint *bool `json:"disable_checkpoint,omitempty"`
+	DisableConnection *bool `json:"disable_connection,omitempty"`
+	DisableError      *bool `json:"disable_error,omitempty"`
+	DisableHourly     *bool `json:"disable_hourly,omitempty"`
+	DisableLock       *bool `json:"disable_lock,omitempty"`
+	DisableQuery      *bool `json:"disable_query,omitempty"`
+	DisableSession    *bool `json:"disable_session,omitempty"`
+	DisableTemporary  *bool `json:"disable_temporary,omitempty"`
+	DisableType       *bool `json:"disable_type,omitempty"`
+
+	DumpAllQueries *bool `json:"dump_all_queries,omitempty"` // --dump-all-queries
+	DumpRawCSV     *bool `json:"dump_raw_csv,omitempty"`     // --dump-raw-csv
+	EnableChecksum *bool `json:"enable_checksum,omitempty"`  // --enable-checksum
+
+	IncludeFile []string `json:"include_file,omitempty"` // --include-file
+	IncludeTime []string `json:"include_time,omitempty"` // --include-time
+
+	IsoWeekNumber *bool `json:"iso_week_number,omitempty"` // --iso-week-number
+	KeepComments  *bool `json:"keep_comments,omitempty"`   // --keep-comments
+	StartMonday   *bool `json:"start_monday,omitempty"`    // --start-monday
+
+	Tempdir *string `json:"tempdir,omitempty"`  // --tempdir
+	PIDDir  *string `json:"pid_dir,omitempty"`  // --pid-dir
+	PIDFile *string `json:"pid_file,omitempty"` // --pid-file
+
+	NoFork         *bool `json:"no_fork,omitempty"`         // --no-fork
+	NoProcessInfo  *bool `json:"no_process_info,omitempty"` // --no-process-info
+	NoProgressbar  *bool `json:"no_progressbar,omitempty"`  // --no-progressbar
+	NoReport       *bool `json:"no_report,omitempty"`       // --noreport
+	NoWeek         *bool `json:"no_week,omitempty"`         // --no-week
+	NormalizedOnly *bool `json:"normalized_only,omitempty"` // --normalized-only
+	PgbouncerOnly  *bool `json:"pgbouncer_only,omitempty"`  // --pgbouncer-only
+
+	PieLimit     *int  `json:"pie_limit,omitempty"`     // --pie-limit
+	PrettifyJSON *bool `json:"prettify_json,omitempty"` // --prettify-json
+	Rebuild      *bool `json:"rebuild,omitempty"`       // --rebuild
 
 	// Data directory (default if not provided)
 	DataDir *string `json:"data_dir,omitempty"`
@@ -156,8 +223,9 @@ func (opts *PgbadgerOptions) BuildCommand(logPath string) []string {
 	if opts.Format != nil {
 		args = append(args, "-f", *opts.Format)
 	}
-	if opts.Outfile != nil {
-		args = append(args, "-o", *opts.Outfile)
+	// support multiple -o outfiles
+	for _, of := range opts.Outfiles {
+		args = append(args, "-o", of)
 	}
 	if opts.Outdir != nil {
 		args = append(args, "-O", *opts.Outdir)
@@ -226,7 +294,14 @@ func (opts *PgbadgerOptions) BuildCommand(logPath string) []string {
 	if opts.Extension != nil {
 		args = append(args, "-x", *opts.Extension)
 	}
-	if opts.Prettify != nil && !*opts.Prettify {
+	// multiple outfiles support
+	for _, of := range opts.Outfiles {
+		args = append(args, "-o", of)
+	}
+	if opts.Outdir != nil {
+		args = append(args, "-O", *opts.Outdir)
+	}
+	if opts.NoPrettify != nil && *opts.NoPrettify {
 		args = append(args, "-P")
 	}
 	if opts.QueryNumbering != nil && *opts.QueryNumbering {
@@ -260,6 +335,15 @@ func (opts *PgbadgerOptions) BuildCommand(logPath string) []string {
 	for _, db := range opts.ExcludeDb {
 		args = append(args, "--exclude-db", db)
 	}
+	for _, f := range opts.ExcludeFile {
+		args = append(args, "--exclude-file", f)
+	}
+	for _, l := range opts.ExcludeLine {
+		args = append(args, "--exclude-line", l)
+	}
+	for _, q := range opts.ExcludeQuery {
+		args = append(args, "--exclude-query", q)
+	}
 
 	// Include options
 	for _, query := range opts.IncludeQuery {
@@ -270,6 +354,12 @@ func (opts *PgbadgerOptions) BuildCommand(logPath string) []string {
 	}
 	for _, session := range opts.IncludeSession {
 		args = append(args, "--include-session", session)
+	}
+	for _, f := range opts.IncludeFile {
+		args = append(args, "--include-file", f)
+	}
+	for _, t := range opts.IncludeTime {
+		args = append(args, "--include-time", t)
 	}
 
 	// Advanced options
@@ -286,8 +376,169 @@ func (opts *PgbadgerOptions) BuildCommand(logPath string) []string {
 		args = append(args, "--log-timezone", *opts.LogTimezone)
 	}
 
-	// Add the log file path
-	args = append(args, logPath)
+	// Additional options
+	if opts.LogfileList != nil {
+		args = append(args, "-L", *opts.LogfileList)
+	}
+	if opts.LastParsed != nil {
+		args = append(args, "-l", *opts.LastParsed)
+	}
+	if opts.NoComment != nil && *opts.NoComment {
+		args = append(args, "-C")
+	}
+	if opts.DNSResolv != nil && *opts.DNSResolv {
+		args = append(args, "-D")
+	}
+	if opts.HTMLOutdir != nil {
+		args = append(args, "-H", *opts.HTMLOutdir)
+	}
+	if opts.NoMultiline != nil && *opts.NoMultiline {
+		args = append(args, "-M")
+	}
+
+	if opts.RemoteHost != nil {
+		args = append(args, "-r", *opts.RemoteHost)
+	}
+	if opts.SSHIdentity != nil {
+		args = append(args, "--ssh-identity", *opts.SSHIdentity)
+	}
+	for _, o := range opts.SSHOption {
+		args = append(args, "--ssh-option", o)
+	}
+	if opts.SSHPort != nil {
+		args = append(args, "--ssh-port", strconv.Itoa(*opts.SSHPort))
+	}
+	if opts.SSHProgram != nil {
+		args = append(args, "--ssh-program", *opts.SSHProgram)
+	}
+	if opts.SSHTimeout != nil {
+		args = append(args, "--ssh-timeout", strconv.Itoa(*opts.SSHTimeout))
+	}
+	if opts.SSHUser != nil {
+		args = append(args, "--ssh-user", *opts.SSHUser)
+	}
+
+	if opts.Retention != nil {
+		args = append(args, "-R", strconv.Itoa(*opts.Retention))
+	}
+	if opts.ExtraFiles != nil && *opts.ExtraFiles {
+		args = append(args, "-X")
+	}
+	if opts.Zcat != nil {
+		args = append(args, "-z", *opts.Zcat)
+	}
+	if opts.Command != nil {
+		args = append(args, "--command", *opts.Command)
+	}
+	if opts.CSVSeparator != nil {
+		args = append(args, "--csv-separator", *opts.CSVSeparator)
+	}
+
+	if opts.DayReport != nil {
+		args = append(args, "--day-report", *opts.DayReport)
+	}
+	if opts.MonthReport != nil {
+		args = append(args, "--month-report", *opts.MonthReport)
+	}
+
+	// disable specific reports
+	if opts.DisableAutovacuum != nil && *opts.DisableAutovacuum {
+		args = append(args, "--disable-autovacuum")
+	}
+	if opts.DisableCheckpoint != nil && *opts.DisableCheckpoint {
+		args = append(args, "--disable-checkpoint")
+	}
+	if opts.DisableConnection != nil && *opts.DisableConnection {
+		args = append(args, "--disable-connection")
+	}
+	if opts.DisableError != nil && *opts.DisableError {
+		args = append(args, "--disable-error")
+	}
+	if opts.DisableHourly != nil && *opts.DisableHourly {
+		args = append(args, "--disable-hourly")
+	}
+	if opts.DisableLock != nil && *opts.DisableLock {
+		args = append(args, "--disable-lock")
+	}
+	if opts.DisableQuery != nil && *opts.DisableQuery {
+		args = append(args, "--disable-query")
+	}
+	if opts.DisableSession != nil && *opts.DisableSession {
+		args = append(args, "--disable-session")
+	}
+	if opts.DisableTemporary != nil && *opts.DisableTemporary {
+		args = append(args, "--disable-temporary")
+	}
+	if opts.DisableType != nil && *opts.DisableType {
+		args = append(args, "--disable-type")
+	}
+
+	if opts.DumpAllQueries != nil && *opts.DumpAllQueries {
+		args = append(args, "--dump-all-queries")
+	}
+	if opts.DumpRawCSV != nil && *opts.DumpRawCSV {
+		args = append(args, "--dump-raw-csv")
+	}
+	if opts.EnableChecksum != nil && *opts.EnableChecksum {
+		args = append(args, "--enable-checksum")
+	}
+
+	if opts.IsoWeekNumber != nil && *opts.IsoWeekNumber {
+		args = append(args, "--iso-week-number")
+	}
+	if opts.KeepComments != nil && *opts.KeepComments {
+		args = append(args, "--keep-comments")
+	}
+	if opts.StartMonday != nil && *opts.StartMonday {
+		args = append(args, "--start-monday")
+	}
+
+	if opts.Tempdir != nil {
+		args = append(args, "--tempdir", *opts.Tempdir)
+	}
+	if opts.PIDDir != nil {
+		args = append(args, "--pid-dir", *opts.PIDDir)
+	}
+	if opts.PIDFile != nil {
+		args = append(args, "--pid-file", *opts.PIDFile)
+	}
+
+	if opts.NoFork != nil && *opts.NoFork {
+		args = append(args, "--no-fork")
+	}
+	if opts.NoProcessInfo != nil && *opts.NoProcessInfo {
+		args = append(args, "--no-process-info")
+	}
+	if opts.NoProgressbar != nil && *opts.NoProgressbar {
+		args = append(args, "--no-progressbar")
+	}
+	if opts.NoReport != nil && *opts.NoReport {
+		args = append(args, "--noreport")
+	}
+	if opts.NoWeek != nil && *opts.NoWeek {
+		args = append(args, "--no-week")
+	}
+	if opts.NormalizedOnly != nil && *opts.NormalizedOnly {
+		args = append(args, "--normalized-only")
+	}
+	if opts.PgbouncerOnly != nil && *opts.PgbouncerOnly {
+		args = append(args, "--pgbouncer-only")
+	}
+
+	if opts.PieLimit != nil {
+		args = append(args, "--pie-limit", strconv.Itoa(*opts.PieLimit))
+	}
+	if opts.PrettifyJSON != nil && *opts.PrettifyJSON {
+		args = append(args, "--prettify-json")
+	}
+	if opts.Rebuild != nil && *opts.Rebuild {
+		args = append(args, "--rebuild")
+	}
+
+	// Add positional log file(s) unless logfile-list is used
+	if opts.LogfileList == nil {
+		args = append(args, logPath)
+	}
 
 	return args
 }

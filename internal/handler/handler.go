@@ -115,7 +115,7 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		}
 		if v := qp("outfile"); v != "" {
 			vv := SanitizeString(v, 512)
-			opts.Outfile = &vv
+			opts.Outfiles = []string{vv}
 		}
 		if v := qp("outdir"); v != "" {
 			vv := SanitizeString(v, 512)
@@ -210,7 +210,8 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		}
 		if v := qp("prettify"); v != "" {
 			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
-				opts.Prettify = &b
+				nb := !b
+				opts.NoPrettify = &nb
 			}
 		}
 		if v := qp("query_numbering"); v != "" {
@@ -284,6 +285,226 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		if v := qp("data_dir"); v != "" {
 			vv := SanitizeString(v, 256)
 			opts.DataDir = &vv
+		}
+
+		// Helper to detect presence-only booleans or parse explicit bool values
+		presentBool := func(key string) *bool {
+			q := c.Request.URL.Query()
+			if vals, ok := q[key]; ok {
+				// presence without value => true
+				if len(vals) == 0 || vals[0] == "" {
+					b := true
+					return &b
+				}
+				if b, err := strconv.ParseBool(SanitizeString(vals[0], 6)); err == nil {
+					return &b
+				}
+			}
+			return nil
+		}
+
+		// Support multiple outfiles (-o)
+		if s := qps("outfile"); len(s) > 0 {
+			opts.Outfiles = SanitizeStringSlice(s, 512)
+		}
+
+		// Additional flags
+		if v := qp("logfile_list"); v != "" {
+			vv := SanitizeString(v, 512)
+			opts.LogfileList = &vv
+		}
+		if v := qp("last_parsed"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.LastParsed = &vv
+		}
+		if b := presentBool("nocomment"); b != nil {
+			opts.NoComment = b
+		}
+		if b := presentBool("dns_resolv"); b != nil {
+			opts.DNSResolv = b
+		}
+		if v := qp("html_outdir"); v != "" {
+			vv := SanitizeString(v, 512)
+			opts.HTMLOutdir = &vv
+		}
+		if b := presentBool("no_multiline"); b != nil {
+			opts.NoMultiline = b
+		}
+
+		if v := qp("remote_host"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.RemoteHost = &vv
+		}
+		if v := qp("ssh_identity"); v != "" {
+			vv := SanitizeString(v, 512)
+			opts.SSHIdentity = &vv
+		}
+		if s := qps("ssh_option"); len(s) > 0 {
+			opts.SSHOption = SanitizeStringSlice(s, 256)
+		}
+		if v := qp("ssh_port"); v != "" {
+			if n, err := strconv.Atoi(SanitizeString(v, 6)); err == nil {
+				opts.SSHPort = &n
+			}
+		}
+		if v := qp("ssh_program"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.SSHProgram = &vv
+		}
+		if v := qp("ssh_timeout"); v != "" {
+			if n, err := strconv.Atoi(SanitizeString(v, 6)); err == nil {
+				opts.SSHTimeout = &n
+			}
+		}
+		if v := qp("ssh_user"); v != "" {
+			vv := SanitizeString(v, 128)
+			opts.SSHUser = &vv
+		}
+
+		if v := qp("retention"); v != "" {
+			if n, err := strconv.Atoi(SanitizeString(v, 6)); err == nil {
+				opts.Retention = &n
+			}
+		}
+		if b := presentBool("extra_files"); b != nil {
+			opts.ExtraFiles = b
+		}
+		if v := qp("zcat"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.Zcat = &vv
+		}
+		if v := qp("command"); v != "" {
+			vv := SanitizeString(v, 1024)
+			opts.Command = &vv
+		}
+		if v := qp("csv_separator"); v != "" {
+			vv := SanitizeString(v, 8)
+			opts.CSVSeparator = &vv
+		}
+
+		if v := qp("day_report"); v != "" {
+			vv := SanitizeString(v, 32)
+			opts.DayReport = &vv
+		}
+		if v := qp("month_report"); v != "" {
+			vv := SanitizeString(v, 32)
+			opts.MonthReport = &vv
+		}
+
+		// disable flags
+		if b := presentBool("disable_autovacuum"); b != nil {
+			opts.DisableAutovacuum = b
+		}
+		if b := presentBool("disable_checkpoint"); b != nil {
+			opts.DisableCheckpoint = b
+		}
+		if b := presentBool("disable_connection"); b != nil {
+			opts.DisableConnection = b
+		}
+		if b := presentBool("disable_error"); b != nil {
+			opts.DisableError = b
+		}
+		if b := presentBool("disable_hourly"); b != nil {
+			opts.DisableHourly = b
+		}
+		if b := presentBool("disable_lock"); b != nil {
+			opts.DisableLock = b
+		}
+		if b := presentBool("disable_query"); b != nil {
+			opts.DisableQuery = b
+		}
+		if b := presentBool("disable_session"); b != nil {
+			opts.DisableSession = b
+		}
+		if b := presentBool("disable_temporary"); b != nil {
+			opts.DisableTemporary = b
+		}
+		if b := presentBool("disable_type"); b != nil {
+			opts.DisableType = b
+		}
+
+		if b := presentBool("dump_all_queries"); b != nil {
+			opts.DumpAllQueries = b
+		}
+		if b := presentBool("dump_raw_csv"); b != nil {
+			opts.DumpRawCSV = b
+		}
+		if b := presentBool("enable_checksum"); b != nil {
+			opts.EnableChecksum = b
+		}
+
+		if s := qps("exclude_file"); len(s) > 0 {
+			opts.ExcludeFile = SanitizeStringSlice(s, 512)
+		}
+		if s := qps("exclude_line"); len(s) > 0 {
+			opts.ExcludeLine = SanitizeStringSlice(s, 512)
+		}
+		if s := qps("exclude_query"); len(s) > 0 {
+			opts.ExcludeQuery = SanitizeStringSlice(s, 512)
+		}
+
+		if s := qps("include_file"); len(s) > 0 {
+			opts.IncludeFile = SanitizeStringSlice(s, 512)
+		}
+		if s := qps("include_time"); len(s) > 0 {
+			opts.IncludeTime = SanitizeStringSlice(s, 256)
+		}
+
+		if b := presentBool("iso_week_number"); b != nil {
+			opts.IsoWeekNumber = b
+		}
+		if b := presentBool("keep_comments"); b != nil {
+			opts.KeepComments = b
+		}
+		if b := presentBool("start_monday"); b != nil {
+			opts.StartMonday = b
+		}
+
+		if v := qp("tempdir"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.Tempdir = &vv
+		}
+		if v := qp("pid_dir"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.PIDDir = &vv
+		}
+		if v := qp("pid_file"); v != "" {
+			vv := SanitizeString(v, 256)
+			opts.PIDFile = &vv
+		}
+
+		if b := presentBool("no_fork"); b != nil {
+			opts.NoFork = b
+		}
+		if b := presentBool("no_process_info"); b != nil {
+			opts.NoProcessInfo = b
+		}
+		if b := presentBool("no_progressbar"); b != nil {
+			opts.NoProgressbar = b
+		}
+		if b := presentBool("noreport"); b != nil {
+			opts.NoReport = b
+		}
+		if b := presentBool("no_week"); b != nil {
+			opts.NoWeek = b
+		}
+		if b := presentBool("normalized_only"); b != nil {
+			opts.NormalizedOnly = b
+		}
+		if b := presentBool("pgbouncer_only"); b != nil {
+			opts.PgbouncerOnly = b
+		}
+
+		if v := qp("pie_limit"); v != "" {
+			if n, err := strconv.Atoi(SanitizeString(v, 6)); err == nil {
+				opts.PieLimit = &n
+			}
+		}
+		if b := presentBool("prettify_json"); b != nil {
+			opts.PrettifyJSON = b
+		}
+		if b := presentBool("rebuild"); b != nil {
+			opts.Rebuild = b
 		}
 
 		// Set defaults
