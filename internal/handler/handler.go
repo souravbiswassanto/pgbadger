@@ -2,7 +2,10 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"os/exec"
@@ -31,11 +34,16 @@ func Register(r *gin.Engine, cfg *config.Config, lg *zap.SugaredLogger) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Serve a basic login page which sets an initial csrf cookie
+	// Serve login page (sets a crypto-random csrf cookie readable by JS for double-submit CSRF)
 	r.GET("/login", func(c *gin.Context) {
-		// generate csrf token and set as cookie (not HttpOnly so client JS can read it)
-		// TODO: use a more secure random token generator
-		csrfVal := fmt.Sprintf("%d", time.Now().UnixNano())
+		// generate crypto-random csrf token and set as cookie (not HttpOnly so client JS can read it)
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			lg.Errorw("failed to generate csrf token", "error", err)
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		csrfVal := base64.RawURLEncoding.EncodeToString(b)
 		secure := cfg.Security.EnableTLS
 		csrf := &http.Cookie{
 			Name:     "csrf_token",
@@ -49,9 +57,47 @@ func Register(r *gin.Engine, cfg *config.Config, lg *zap.SugaredLogger) {
 		}
 		http.SetCookie(c.Writer, csrf)
 
-		// serve the static login page
-		c.File("./web/login.html")
+		// Render login template (html/template escapes by default)
+		tplPath, err := findTemplateFile("web/login.tmpl")
+		if err != nil {
+			lg.Errorw("failed to find login template", "error", err)
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		tmpl, err := template.ParseFiles(tplPath)
+		if err != nil {
+			lg.Errorw("failed to parse login template", "error", err)
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if err := tmpl.Execute(c.Writer, nil); err != nil {
+			lg.Errorw("failed to execute login template", "error", err)
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 	})
+}
+
+// findTemplateFile attempts to locate a template file by trying a few relative
+// paths upwards from the current working directory. This helps tests running
+// from package directories find project-level assets.
+func findTemplateFile(rel string) (string, error) {
+	// candidates: cwd/rel, parent/rel, parent/parent/rel, etc.
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// try up to 4 levels
+	p := cwd
+	for i := 0; i < 5; i++ {
+		cand := filepath.Join(p, rel)
+		if _, err := os.Stat(cand); err == nil {
+			return cand, nil
+		}
+		p = filepath.Dir(p)
+	}
+	return "", fmt.Errorf("template %s not found in cwd or parent dirs", rel)
 }
 
 func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.HandlerFunc {
@@ -64,56 +110,66 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		qps := func(key string) []string { return c.QueryArray(key) }
 
 		if v := qp("format"); v != "" {
+			v = SanitizeString(v, 128)
 			opts.Format = &v
 		}
 		if v := qp("outfile"); v != "" {
-			opts.Outfile = &v
+			vv := SanitizeString(v, 512)
+			opts.Outfile = &vv
 		}
 		if v := qp("outdir"); v != "" {
-			opts.Outdir = &v
+			vv := SanitizeString(v, 512)
+			opts.Outdir = &vv
 		}
 		if v := qp("title"); v != "" {
-			opts.Title = &v
+			vv := SanitizeString(v, 256)
+			opts.Title = &vv
 		}
 		if v := qp("jobs"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
+			if n, err := strconv.Atoi(SanitizeString(v, 10)); err == nil {
 				opts.Jobs = &n
 			}
 		}
 		if v := qp("jobs_parallel"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
+			if n, err := strconv.Atoi(SanitizeString(v, 10)); err == nil {
 				opts.JobsParallel = &n
 			}
 		}
 		if v := qp("verbose"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.Verbose = &b
 			}
 		}
 		if v := qp("quiet"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.Quiet = &b
 			}
 		}
 
 		if v := qp("dbname"); v != "" {
-			opts.Dbname = &v
+			vv := SanitizeString(v, 128)
+			opts.Dbname = &vv
 		}
 		if v := qp("dbuser"); v != "" {
-			opts.Dbuser = &v
+			vv := SanitizeString(v, 128)
+			opts.Dbuser = &vv
 		}
 		if v := qp("appname"); v != "" {
-			opts.Appname = &v
+			vv := SanitizeString(v, 128)
+			opts.Appname = &vv
 		}
 		if v := qp("client_host"); v != "" {
-			opts.ClientHost = &v
+			vv := SanitizeString(v, 128)
+			opts.ClientHost = &vv
 		}
 
 		if v := qp("begin"); v != "" {
-			opts.Begin = &v
+			vv := SanitizeString(v, 64)
+			opts.Begin = &vv
 		}
 		if v := qp("end"); v != "" {
-			opts.End = &v
+			vv := SanitizeString(v, 64)
+			opts.End = &vv
 		}
 
 		if v := qp("top"); v != "" {
@@ -149,79 +205,85 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		}
 
 		if v := qp("extension"); v != "" {
-			opts.Extension = &v
+			vv := SanitizeString(v, 16)
+			opts.Extension = &vv
 		}
 		if v := qp("prettify"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.Prettify = &b
 			}
 		}
 		if v := qp("query_numbering"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.QueryNumbering = &b
 			}
 		}
 
 		if v := qp("select_only"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.SelectOnly = &b
 			}
 		}
 		if v := qp("watch_mode"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.WatchMode = &b
 			}
 		}
 		if v := qp("incremental"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.Incremental = &b
 			}
 		}
 		if v := qp("explode"); v != "" {
-			if b, err := strconv.ParseBool(v); err == nil {
+			if b, err := strconv.ParseBool(SanitizeString(v, 6)); err == nil {
 				opts.Explode = &b
 			}
 		}
 
-		// list-type params
+		// list-type params (sanitized)
 		if s := qps("exclude_user"); len(s) > 0 {
-			opts.ExcludeUser = s
+			opts.ExcludeUser = SanitizeStringSlice(s, 128)
 		}
 		if s := qps("exclude_appname"); len(s) > 0 {
-			opts.ExcludeAppname = s
+			opts.ExcludeAppname = SanitizeStringSlice(s, 128)
 		}
 		if s := qps("exclude_client"); len(s) > 0 {
-			opts.ExcludeClient = s
+			opts.ExcludeClient = SanitizeStringSlice(s, 128)
 		}
 		if s := qps("exclude_db"); len(s) > 0 {
-			opts.ExcludeDb = s
+			opts.ExcludeDb = SanitizeStringSlice(s, 128)
 		}
 
 		if s := qps("include_query"); len(s) > 0 {
-			opts.IncludeQuery = s
+			opts.IncludeQuery = SanitizeStringSlice(s, 512)
 		}
 		if s := qps("include_pid"); len(s) > 0 {
-			opts.IncludePid = s
+			opts.IncludePid = SanitizeStringSlice(s, 64)
 		}
 		if s := qps("include_session"); len(s) > 0 {
-			opts.IncludeSession = s
+			opts.IncludeSession = SanitizeStringSlice(s, 128)
 		}
 
 		if v := qp("prefix"); v != "" {
-			opts.Prefix = &v
+			vv := SanitizeString(v, 128)
+			opts.Prefix = &vv
 		}
 		if v := qp("ident"); v != "" {
-			opts.Ident = &v
+			vv := SanitizeString(v, 128)
+			opts.Ident = &vv
 		}
 		if v := qp("timezone"); v != "" {
-			opts.Timezone = &v
+			vv := SanitizeString(v, 64)
+			opts.Timezone = &vv
 		}
 		if v := qp("log_timezone"); v != "" {
-			opts.LogTimezone = &v
+			vv := SanitizeString(v, 64)
+			opts.LogTimezone = &vv
 		}
 
 		if v := qp("data_dir"); v != "" {
-			opts.DataDir = &v
+			vv := SanitizeString(v, 256)
+			opts.DataDir = &vv
 		}
 
 		// Set defaults

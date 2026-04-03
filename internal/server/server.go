@@ -26,7 +26,12 @@ func New(cfg *config.Config, lg *zap.SugaredLogger) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	// security headers (HSTS added when TLS is enabled)
+	r.Use(middleware.SecurityHeaders(cfg.Security.EnableTLS))
 	r.Use(middleware.ZapLogger(lg))
+
+	// serve static web assets (login.js, etc.) under /static
+	r.Static("/static", "./web")
 
 	// register routes
 	handler.Register(r, cfg, lg)

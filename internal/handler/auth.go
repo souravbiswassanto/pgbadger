@@ -119,7 +119,7 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 
 		// If insecure mode is enabled, bypass authentication
 		if h.cfg.Security.Insecure {
-			c.Set("username", "insecure")
+			//c.Set("username", "insecure")
 			c.Next()
 			return
 		}
