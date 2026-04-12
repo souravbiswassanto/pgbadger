@@ -66,7 +66,7 @@ func Register(r *gin.Engine, cfg *config.Config, lg *zap.SugaredLogger) {
 		}
 		tmpl, err := template.ParseFiles(tplPath)
 		if err != nil {
-			lg.Errorw("failed to parse login template", "error", err)
+			lg.Errorw("failed to parse login template:", "error", err)
 			c.Status(http.StatusInternalServerError)
 			return
 		}
