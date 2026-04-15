@@ -172,6 +172,7 @@ func (h *AuthHandler) generateToken(username string) (string, error) {
 		"username": username,
 		"exp":      time.Now().Add(h.cfg.Auth.JWTExpiry).Unix(),
 		"iat":      time.Now().Unix(),
+		// not setting any role for now
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

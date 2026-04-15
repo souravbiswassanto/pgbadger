@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/viper"
@@ -61,7 +62,6 @@ func Load() *Config {
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 2385)
 	viper.SetDefault("log.level", "info")
-	viper.SetDefault("auth.jwt_secret", "change-this-secret-in-production")
 	viper.SetDefault("auth.jwt_expiry", "24h")
 	viper.SetDefault("security.enable_tls", false)
 	viper.SetDefault("security.cert_file", "")
@@ -100,4 +100,11 @@ func Load() *Config {
 	}
 
 	return &cfg
+}
+
+func (c *Config) CheckRequiredConfigSet() error {
+	if c.Auth.JWTSecret == "" {
+		return fmt.Errorf("auth.jwt_secret is required")
+	}
+	return nil
 }

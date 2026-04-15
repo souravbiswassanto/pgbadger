@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/souravbiswassanto/pgbadger/config"
 	"go.uber.org/zap"
+	"k8s.io/klog"
 )
 
 func Register(r *gin.Engine, cfg *config.Config, lg *zap.SugaredLogger) {
@@ -539,7 +540,7 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 		}
 
 		// Set a timeout context
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "pgbadger", args...)
 
@@ -558,6 +559,7 @@ func handleReportGeneration(cfg *config.Config, lg *zap.SugaredLogger) gin.Handl
 			})
 			return
 		}
+		klog.Infoln("Pgbadger output is", output)
 
 		if err != nil {
 			lg.Errorw("pgbadger command failed",

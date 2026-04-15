@@ -18,12 +18,15 @@ import (
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Run the HTTP server",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := config.Load()
-
+		err := cfg.CheckRequiredConfigSet()
+		if err != nil {
+			return err
+		}
 		// init global logger
 		lg := logger.New(cfg.Log.Level)
-		defer lg.Sync()
+		defer lg.Sync() // nolint:errcheck
 
 		srv := server.New(cfg, lg)
 
@@ -47,6 +50,7 @@ var serverCmd = &cobra.Command{
 		}
 
 		fmt.Println("server exiting")
+		return nil
 	},
 }
 
